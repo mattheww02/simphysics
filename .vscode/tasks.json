@@ -1,0 +1,29 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "build OpenGL Project",
+            "type": "shell",
+            "command": "g++",
+            "args": [
+                "-std=c++17",
+                "main.cpp",                                     // Your source file
+                "-o", "main",                                   // Output binary
+                "-I", "C:/Users/mattw/OneDrive/Documents/vcpkg/installed/x64-windows/include",      // Include for dynamic libraries
+                "-I", "C:/Users/mattw/OneDrive/Documents/vcpkg/installed/x64-windows-static/include", // Include for static libraries
+                "-L", "C:/Users/mattw/OneDrive/Documents/vcpkg/installed/x64-windows/lib",           // Libs for dynamic libraries
+                "-L", "C:/Users/mattw/OneDrive/Documents/vcpkg/installed/x64-windows-static/lib",    // Libs for static libraries
+                "-lopengl32",                                   // OpenGL on Windows
+                "-lgdi32",                                      // Required for OpenGL context
+                "-lglad",                                       // Link GLAD
+                "-lglfw3"                                       // Link GLFW statically
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": ["$gcc"],
+            "detail": "Compiling OpenGL project with g++"
+        }
+    ]
+}
