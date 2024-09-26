@@ -7,16 +7,16 @@
             "command": "g++",
             "args": [
                 "-std=c++17",
-                "main.cpp",                                     // Your source file
                 "-o", "main",                                   // Output binary
-                "-I", "C:/Users/mattw/OneDrive/Documents/vcpkg/installed/x64-windows/include",      // Include for dynamic libraries
-                "-I", "C:/Users/mattw/OneDrive/Documents/vcpkg/installed/x64-windows-static/include", // Include for static libraries
-                "-L", "C:/Users/mattw/OneDrive/Documents/vcpkg/installed/x64-windows/lib",           // Libs for dynamic libraries
-                "-L", "C:/Users/mattw/OneDrive/Documents/vcpkg/installed/x64-windows-static/lib",    // Libs for static libraries
-                "-lopengl32",                                   // OpenGL on Windows
-                "-lgdi32",                                      // Required for OpenGL context
-                "-lglad",                                       // Link GLAD
-                "-lglfw3"                                       // Link GLFW statically
+                "-I", "C:/msys64/mingw64/include",
+                "-L", "C:/msys64/mingw64/lib",
+                "main.cpp",
+                "PhysicsObject.cpp",
+                "Particle.cpp",
+                "Quad.cpp",
+                "-lglfw3",
+                "-lopengl32",                                   // Link OpenGL
+                "-lgdi32"                                       // Required for OpenGL context
             ],
             "group": {
                 "kind": "build",
