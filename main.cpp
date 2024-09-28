@@ -34,7 +34,7 @@ int main() {
     glfwMakeContextCurrent(window);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 
-    Physics physics = Physics(Vector2(0.5f, 0.8f));
+    Physics physics = Physics(Vector2(1.0f, 0.8f));
 
     float dt = 0.0f;
     float prev_frame = 0.0f;

@@ -4,18 +4,19 @@
 #include <iostream>
 #include <vector>
 #include <stdlib.h>
+#include <time.h>
 #include <memory>
 #include "Vector2.h"
 #include "Particle.h"
+#include "Collisions.h"
 
 class Physics {
     const Vector2 GRAVITY = Vector2(0.0f, -9.81f);
     const Vector2 container_size;
-    const float AIR_RESISTANCE = 0.1f;
-    const float FRICTION = 0.001f;
-    const float BOUNCE_COEF = 0.1f;
+    const int sub_steps = 8;
 
     std::vector<Particle> particles;
+    CollisionGrid collision_grid = CollisionGrid(8, 8);
 
  public: 
 
@@ -26,9 +27,28 @@ class Physics {
                 getRandomBetween(0.01f, container_size.y - 0.01f)
             ));
         }
+        srand(time(0));
     };
 
     void update(float dt) {
+        const float sub_dt = dt / static_cast<float>(sub_steps);
+        for (int i = 0; i < sub_steps; i++) {
+            handleCollisions();
+            handleMotion(sub_dt);
+        }
+    }
+
+    void render() {
+        for (auto& obj: particles) {
+            obj.render();
+        }
+    }
+
+    float getRandomBetween(float min, float max){
+        return min + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(max-min)));
+    }
+
+    void handleMotion(float dt) {
         const float margin = 1.4e-2f;
         for (auto& obj : particles) {
             obj.update(dt);
@@ -44,23 +64,30 @@ class Physics {
             } else if (obj.position.y < margin) {
                 obj.position.y = margin;
             }
+        }
+    }
 
-            for (auto& obj2 : particles) {
-                if (&obj != &obj2){
-                    handleCollision(obj, obj2);
+    void handleCollisions() {
+        for (auto& p : particles) {
+            const int x = static_cast<int>(floor(p.position.x * collision_grid.width / container_size.x));
+            const int y = static_cast<int>(floor(p.position.y * collision_grid.height / container_size.y));
+            collision_grid.addParticle(p, x, y);
+        }
+        
+        for (int y = 0; y < collision_grid.height; y++) {
+            for (int x = 0; x < collision_grid.width; x++) {
+                std::vector<Particle*> ps = collision_grid.getParticles(x, y);
+                for (size_t i = 0; i < ps.size(); ++i) {
+                    for (size_t j = i + 1; j < ps.size(); ++j) {
+                        handleCollision(*ps[i], *ps[j]);
+                        std::cout << "AAAAAAAAAA\n"; 
+                    }
                 }
+                
             }
         }
-    }
 
-    void render() {
-        for (auto& obj: particles) {
-            obj.render();
-        }
-    }
-
-    float getRandomBetween(float min, float max){
-        return min + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(max-min)));
+        
     }
 
     void handleCollision(Particle& obj1, Particle& obj2) {
