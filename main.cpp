@@ -9,6 +9,7 @@
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void processInput(GLFWwindow *window);
 float getRandomBetween(float min, float max);
+void handleCollision(PhysicsObject& obj1, PhysicsObject& obj2);
 
 int main() {
     // init GLFW
@@ -30,13 +31,9 @@ int main() {
     std::vector<PhysicsObject> physics_objects;
     physics_objects.push_back(PhysicsObject(0.0f, 0.0f, 0.5f, 0.5f));
     physics_objects.push_back(PhysicsObject(0.2f, 0.0f, 0.5f, 0.7f));
-    // for (int i = 0; i < 200; i++){
-    //     physics_objects.push_back(PhysicsObject(
-    //         getRandomBetween(-0.3f, 0.3f), getRandomBetween(-0.0f, 0.5f), 
-    //         getRandomBetween(-0.5f, 0.5f), getRandomBetween(-0.5f, 0.5f)
-    //     ));
-    // }
     
+    float dt = 0.0f;
+    float prev_frame = 0.0f;
     
     // main render loop
     while (!glfwWindowShouldClose(window)) {
@@ -48,26 +45,33 @@ int main() {
 
         // render particle
         for (auto& obj: physics_objects) {
+            const float cur_frame = glfwGetTime();
+            dt = cur_frame - prev_frame;
+            prev_frame = cur_frame;
+
             obj.render();
-            obj.update(5e-4f);
+            obj.update(dt * 100);
 
             if (obj.p_y <= -0.1f) {
-                obj.setVelocity(obj.v_x * (1 - Physics::FRICTION), -obj.v_y * (1 - Physics::FRICTION));
+                obj.setVelocity(obj.v_x * (1 - Physics::FRICTION), -obj.v_y * Physics::BOUNCE_COEF);
+                if (obj.p_y < -0.1f){
+                    obj.p_y = -0.1f;
+                }
             }
             if (obj.p_x <= -0.4f || obj.p_x >= 0.4f) {
-                obj.setVelocity(-obj.v_x * (1 - Physics::FRICTION), obj.v_y * (1 - Physics::FRICTION));
+                obj.setVelocity(-obj.v_x * Physics::BOUNCE_COEF, obj.v_y * (1 - Physics::FRICTION));
             }
-            obj.accelerate(0.0f, -Physics::GRAVITY);
-
+            
             for (auto& obj2: physics_objects) {
-                if (abs(obj.p_x - obj2.p_x) < 4e-3f && 
-                    abs(obj.p_y - obj2.p_y) < 4e-3f &&
-                    &obj != &obj2) {
-                        obj.setVelocity(-obj.v_x, -obj.v_y);
+                if (&obj != &obj2) {
+                    handleCollision(obj, obj2);
+                }
+                else{
+                    obj.accelerate(0.0f, -Physics::GRAVITY);
                 }
             }
 
-            if (physics_objects.size() < 200 && rand() % 10000 == 1) {
+            if (physics_objects.size() < 800 && rand() % 1000 == 1) {
                 physics_objects.push_back(PhysicsObject(
                     getRandomBetween(-0.3f, 0.3f), getRandomBetween(-0.0f, 0.5f), 
                     getRandomBetween(-0.5f, 0.5f), getRandomBetween(-0.5f, 0.5f)
@@ -82,6 +86,27 @@ int main() {
 
     glfwTerminate();
     return 0;
+}
+
+void handleCollision(PhysicsObject& obj1, PhysicsObject& obj2) {
+    const float r = 7e-3f;
+
+    const float eps = 5e-8f;
+    const float dx = obj1.p_x - obj2.p_x;
+    const float dy = obj1.p_y - obj2.p_y;
+    const float dist2 = dx * dx + dy * dy;
+    
+    if (dist2 < r * r && dist2 > eps){
+        const float dist = sqrt(dist2);
+        const float delta  = 0.5f * (r - dist);
+        
+        const float vx = (dx / dist) * delta;
+        const float vy = (dy / dist) * delta;
+        obj1.p_x += vx;
+        obj1.p_y += vy;
+        obj2.p_x -= vx;
+        obj2.p_y -= vy;
+    }
 }
 
 float getRandomBetween(float min, float max){

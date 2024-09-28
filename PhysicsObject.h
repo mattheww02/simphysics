@@ -42,6 +42,11 @@ public:
         a_y = 0.0f;
     }
 
+    void setPosition(float x, float y) {
+        p_x = x;
+        p_y = y;
+    }
+
     void accelerate(float x, float y) {
         a_x += x;
         a_y += y;
