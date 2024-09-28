@@ -2,11 +2,13 @@
 #include <iostream>
 #include <vector>
 #include <memory>
-#include "Particle.h"
-#include "Quad.h"
+#include <stdlib.h>
+#include "PhysicsObject.h"
+#include "Physics.h"
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void processInput(GLFWwindow *window);
+float getRandomBetween(float min, float max);
 
 int main() {
     // init GLFW
@@ -25,11 +27,17 @@ int main() {
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 
     // set initial conditions
-    std::vector<std::unique_ptr<PhysicsObject>> physicsObjects;
-    physicsObjects.push_back(std::make_unique<Particle>(0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0001f, true, 10.0f));
-    physicsObjects.push_back(std::make_unique<Particle>(0.5f, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.00015f, true, 10.0f));
-    physicsObjects.push_back(std::make_unique<Quad>(-2.0f, -1.0f, 0.5f, 0.5f, 0.5f, 0.0f, 0.0f, false, 4.0f, 0.2f));
-
+    std::vector<PhysicsObject> physics_objects;
+    physics_objects.push_back(PhysicsObject(0.0f, 0.0f, 0.5f, 0.5f));
+    physics_objects.push_back(PhysicsObject(0.2f, 0.0f, 0.5f, 0.7f));
+    // for (int i = 0; i < 200; i++){
+    //     physics_objects.push_back(PhysicsObject(
+    //         getRandomBetween(-0.3f, 0.3f), getRandomBetween(-0.0f, 0.5f), 
+    //         getRandomBetween(-0.5f, 0.5f), getRandomBetween(-0.5f, 0.5f)
+    //     ));
+    // }
+    
+    
     // main render loop
     while (!glfwWindowShouldClose(window)) {
         processInput(window);
@@ -39,9 +47,32 @@ int main() {
         glClear(GL_COLOR_BUFFER_BIT);
 
         // render particle
-        for (auto& obj: physicsObjects){
-            obj -> render();
-            obj -> update();
+        for (auto& obj: physics_objects) {
+            obj.render();
+            obj.update(5e-4f);
+
+            if (obj.p_y <= -0.1f) {
+                obj.setVelocity(obj.v_x * (1 - Physics::FRICTION), -obj.v_y * (1 - Physics::FRICTION));
+            }
+            if (obj.p_x <= -0.4f || obj.p_x >= 0.4f) {
+                obj.setVelocity(-obj.v_x * (1 - Physics::FRICTION), obj.v_y * (1 - Physics::FRICTION));
+            }
+            obj.accelerate(0.0f, -Physics::GRAVITY);
+
+            for (auto& obj2: physics_objects) {
+                if (abs(obj.p_x - obj2.p_x) < 4e-3f && 
+                    abs(obj.p_y - obj2.p_y) < 4e-3f &&
+                    &obj != &obj2) {
+                        obj.setVelocity(-obj.v_x, -obj.v_y);
+                }
+            }
+
+            if (physics_objects.size() < 200 && rand() % 10000 == 1) {
+                physics_objects.push_back(PhysicsObject(
+                    getRandomBetween(-0.3f, 0.3f), getRandomBetween(-0.0f, 0.5f), 
+                    getRandomBetween(-0.5f, 0.5f), getRandomBetween(-0.5f, 0.5f)
+                ));
+            }
         }
 
         // Swap buffers
@@ -51,6 +82,10 @@ int main() {
 
     glfwTerminate();
     return 0;
+}
+
+float getRandomBetween(float min, float max){
+    return min + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(max-min)));
 }
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height) {

@@ -11,9 +11,6 @@
                 "-I", "C:/msys64/mingw64/include",
                 "-L", "C:/msys64/mingw64/lib",
                 "main.cpp",
-                "PhysicsObject.cpp",
-                "Particle.cpp",
-                "Quad.cpp",
                 "-lglfw3",
                 "-lopengl32",                                   // Link OpenGL
                 "-lgdi32"                                       // Required for OpenGL context

@@ -1,6 +1,4 @@
-#ifndef PARTICLE_H
-#define PARTICLE_H
-
+#pragma once
 #include "PhysicsObject.h"
 
 class Particle : public PhysicsObject {
@@ -17,5 +15,3 @@ public:
 
     void render() override;
 };
-
-#endif
