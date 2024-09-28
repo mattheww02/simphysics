@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cmath>
+#include <utility>
 
 template <typename T> class Matrix {
 private:
@@ -15,7 +16,9 @@ public:
 
     ~Matrix() { delete[] array; }
 
-    T at(int x, int y) const { return array[index(x, y)]; }
+    void set(int x, int y, T value) { array[index(x, y)] = std::move(value); }
+
+    T& at(int x, int y) { return array[index(x, y)]; }
 
     T* getArray() const { return array; }
 };

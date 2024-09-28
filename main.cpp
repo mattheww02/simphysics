@@ -34,7 +34,7 @@ int main() {
     glfwMakeContextCurrent(window);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 
-    Physics physics = Physics(Vector2(1.0f, 0.8f));
+    Physics physics = Physics(Vector2(1.2f, 0.8f));
 
     float dt = 0.0f;
     float prev_frame = 0.0f;
@@ -53,7 +53,7 @@ int main() {
         prev_frame = cur_frame; //TODO: pass prev_frame instead of dt to increase accuracy
 
         // update and render particles
-        physics.update(dt);
+        physics.update(1e-1f);
         physics.render();
 
         // Swap buffers

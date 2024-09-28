@@ -15,14 +15,14 @@ class Physics {
     const Vector2 container_size;
     const int sub_steps = 8;
 
-    std::vector<Particle> particles;
-    CollisionGrid collision_grid = CollisionGrid(8, 8);
+    //std::vector<Particle> particles;
+    CollisionGrid collision_grid = CollisionGrid(12, 12);
 
  public: 
 
     Physics(Vector2 size) : container_size(size) {
-        for (int i = 0; i < 500; i++) {
-            particles.push_back(Particle(
+        for (int i = 0; i < 1500; i++) {
+            collision_grid.particles.push_back(Particle(
                 getRandomBetween(0.01f, container_size.x - 0.01f), 
                 getRandomBetween(0.01f, container_size.y - 0.01f)
             ));
@@ -39,7 +39,7 @@ class Physics {
     }
 
     void render() {
-        for (auto& obj: particles) {
+        for (auto& obj: collision_grid.particles) {
             obj.render();
         }
     }
@@ -50,7 +50,7 @@ class Physics {
 
     void handleMotion(float dt) {
         const float margin = 1.4e-2f;
-        for (auto& obj : particles) {
+        for (auto& obj : collision_grid.particles) {
             obj.update(dt);
             obj.acceleration += GRAVITY;
 
@@ -68,26 +68,41 @@ class Physics {
     }
 
     void handleCollisions() {
-        for (auto& p : particles) {
-            const int x = static_cast<int>(floor(p.position.x * collision_grid.width / container_size.x));
-            const int y = static_cast<int>(floor(p.position.y * collision_grid.height / container_size.y));
-            collision_grid.addParticle(p, x, y);
+        collision_grid.clear();
+        for (int i = 0; i < collision_grid.particles.size(); i++) {
+            const int x = static_cast<int>(floor(collision_grid.particles[i].position.x * collision_grid.width / container_size.x));
+            const int y = static_cast<int>(floor(collision_grid.particles[i].position.y * collision_grid.height / container_size.y));
+            collision_grid.addParticle(i, x, y);
         }
         
         for (int y = 0; y < collision_grid.height; y++) {
             for (int x = 0; x < collision_grid.width; x++) {
-                std::vector<Particle*> ps = collision_grid.getParticles(x, y);
-                for (size_t i = 0; i < ps.size(); ++i) {
-                    for (size_t j = i + 1; j < ps.size(); ++j) {
-                        handleCollision(*ps[i], *ps[j]);
-                        std::cout << "AAAAAAAAAA\n"; 
+                // Check current cell and neighboring cells
+                for (int dy = -1; dy <= 1; dy++) {
+                    for (int dx = -1; dx <= 1; dx++) {
+                        int neighbor_x = x + dx;
+                        int neighbor_y = y + dy;
+
+                        // Ensure we stay within grid bounds
+                        if (neighbor_x >= 0 && neighbor_x < collision_grid.width &&
+                            neighbor_y >= 0 && neighbor_y < collision_grid.height) {
+                            
+                            std::vector<size_t> indices = collision_grid.getParticleIndices(neighbor_x, neighbor_y);
+                            for (size_t idx1 : indices) {
+                                Particle& p1 = collision_grid.getParticle(idx1);
+                                for (size_t idx2 : indices) {
+                                    if (idx1 != idx2) {
+                                        Particle& p2 = collision_grid.getParticle(idx2);
+                                        handleCollision(p1, p2);
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
-                
             }
         }
 
-        
     }
 
     void handleCollision(Particle& obj1, Particle& obj2) {
