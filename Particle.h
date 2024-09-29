@@ -24,6 +24,16 @@ public:
         float l_x, float l_y
     ) : position(Vector2(p_x, p_y)), prev_position(Vector2(l_x, l_y)) {}
 
+    Particle( // instantiate with position and previous position
+        float p_x, float p_y,
+        float l_x, float l_y,
+        float r, float g, float b
+    ) : position(Vector2(p_x, p_y)), prev_position(Vector2(l_x, l_y)) {
+        color[0] = r;
+        color[1] = g;
+        color[2] = b;
+    }
+
     void update(float dt) { // update position and velocity
         Vector2 position_dist = position - prev_position;
 

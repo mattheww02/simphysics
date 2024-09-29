@@ -14,23 +14,33 @@ class Physics {
     const Vector2 GRAVITY = Vector2(0.0f, -9.81f);
     const Vector2 container_size;
     const int sub_steps = 8;
+    float time_since_last_particle = 0.0f;
+    float time_elapsed = 0.0f;
 
-    //std::vector<Particle> particles;
-    CollisionGrid collision_grid = CollisionGrid(12, 12);
+    CollisionGrid collision_grid = CollisionGrid(16, 8);
 
  public: 
 
     Physics(Vector2 size) : container_size(size) {
-        for (int i = 0; i < 1500; i++) {
-            collision_grid.particles.push_back(Particle(
-                getRandomBetween(0.01f, container_size.x - 0.01f), 
-                getRandomBetween(0.01f, container_size.y - 0.01f)
-            ));
-        }
         srand(time(0));
     };
 
     void update(float dt) {
+        time_elapsed += dt;
+        if (time_elapsed < 2500.0f) return;
+        time_since_last_particle += dt;
+        if (time_since_last_particle > 0.05f && collision_grid.particles.size() < 1500) {
+            collision_grid.particles.push_back(Particle(
+                getRandomBetween(0.04f, 0.05f), 
+                getRandomBetween(container_size.y - 0.02f, container_size.y - 0.01f),
+                -20.0f, container_size.y - 0.02f,
+                static_cast<float>(abs(sin(time_elapsed / 50))),
+                static_cast<float>(abs(sin(time_elapsed / 50 + 1.0f))),
+                static_cast<float>(abs(sin(time_elapsed / 50 + 2.0f)))
+            ));
+            time_since_last_particle = 0.0f;
+        }
+
         const float sub_dt = dt / static_cast<float>(sub_steps);
         for (int i = 0; i < sub_steps; i++) {
             handleCollisions();
@@ -91,7 +101,7 @@ class Physics {
                             for (size_t idx1 : indices) {
                                 Particle& p1 = collision_grid.getParticle(idx1);
                                 for (size_t idx2 : indices) {
-                                    if (idx1 != idx2) {
+                                    if (idx1 > idx2) {
                                         Particle& p2 = collision_grid.getParticle(idx2);
                                         handleCollision(p1, p2);
                                     }
