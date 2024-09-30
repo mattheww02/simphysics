@@ -61,7 +61,6 @@ public:
 class CollisionGrid {
 private:
     Matrix<CollisionCell> grid;
-    std::mutex grid_mutex;
 
 public:
     std::vector<Particle> particles;
@@ -93,7 +92,6 @@ public:
     }
 
     Particle& getParticle(size_t idx) {
-        std::lock_guard<std::mutex> lock(grid_mutex);
         return particles[idx]; // Access particle by its index
     }
 
