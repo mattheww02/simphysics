@@ -37,7 +37,7 @@ public:
     void update(float dt) { // update position and velocity
         Vector2 position_dist = position - prev_position;
 
-        const float VELOCITY_DAMPING = 1e4f; // arbitrary, approximating air friction
+        const float VELOCITY_DAMPING = 40.0f;//1e4f; // arbitrary, approximating air friction
 
         const Vector2 new_position = position + position_dist + (acceleration - position_dist * VELOCITY_DAMPING) * (dt * dt);
         prev_position = position;
@@ -59,6 +59,10 @@ public:
 
     void stop() {
         prev_position = position;
+    }
+
+    void changeSpeed(float factor) {
+        prev_position = position + (prev_position - position) * factor;
     }
 
     void render() { // render object with OpenGL

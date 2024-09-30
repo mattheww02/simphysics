@@ -18,6 +18,7 @@ int main() {
         std::cerr << "GLFW init failed!" << std::endl;
         return -1;
     }
+
     // create an OpenGL window
     GLFWwindow* window = glfwCreateWindow(window_width, window_height, "OpenGL Window", NULL, NULL);
     if (!window) {
@@ -25,16 +26,27 @@ int main() {
         glfwTerminate();
         return -1;
     }
-    const float zoom = 2.0f;
-    const Vector2 translate = Vector2(500.0f, 0.5f);
-
-    glMatrixMode(GL_PROJECTION);
-    glLoadIdentity();
 
     glfwMakeContextCurrent(window);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 
-    Physics physics = Physics(Vector2(0.2f, 0.8f));
+    // Set up projection (zoom and translate)
+    const float zoom = 1.0f; // Increase this value to zoom out (larger view)
+    const Vector2 translate(0.0f, 0.0f); // Adjust this for translation if needed
+
+    glMatrixMode(GL_PROJECTION); // Switch to projection mode
+    glLoadIdentity();            // Reset any existing projection
+    glOrtho(
+        -window_width / 2.0f * zoom + translate.x, 
+        window_width / 2.0f * zoom + translate.x, 
+        -window_height / 2.0f * zoom + translate.y, 
+        window_height / 2.0f * zoom + translate.y, 
+        -1.0f, 1.0f
+    ); // Apply zoom and translation
+    glMatrixMode(GL_MODELVIEW);  // Switch back to model-view mode
+    glLoadIdentity();            // Reset the model-view matrix
+
+    Physics physics = Physics(Vector2(200.0f, 150.0f), 2);
 
     float dt = 0.0f;
     float prev_frame = 0.0f;
@@ -50,10 +62,10 @@ int main() {
         // calculate delta time
         const float cur_frame = glfwGetTime();
         dt = cur_frame - prev_frame;
-        prev_frame = cur_frame; //TODO: pass prev_frame instead of dt to increase accuracy
+        prev_frame = cur_frame; // TODO: pass prev_frame instead of dt to increase accuracy
 
         // update and render particles
-        physics.update(1e-1f);
+        physics.update(0.1f);
         physics.render();
 
         // Swap buffers

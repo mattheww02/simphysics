@@ -4,36 +4,43 @@
 #include <iostream>
 #include <vector>
 #include <stdlib.h>
+#include <algorithm>
 #include <time.h>
 #include <memory>
 #include "Vector2.h"
 #include "Particle.h"
 #include "Collisions.h"
+#include "ThreadPool.h"
 
 class Physics {
-    const Vector2 GRAVITY = Vector2(0.0f, -9.81f);
+    const Vector2 GRAVITY = Vector2(0.0f, -20.0f);//Vector2(0.0f, -9.81f);
     const Vector2 container_size;
     const int sub_steps = 8;
     float time_since_last_particle = 0.0f;
     float time_elapsed = 0.0f;
 
-    CollisionGrid collision_grid = CollisionGrid(16, 8);
+    CollisionGrid collision_grid = CollisionGrid(64, 32);
+    ThreadPool thread_pool;
 
  public: 
 
-    Physics(Vector2 size) : container_size(size) {
+    Physics(
+        Vector2 size, 
+        size_t thread_count
+    ) : container_size(size), thread_pool(thread_count) {
         srand(time(0));
     };
 
     void update(float dt) {
         time_elapsed += dt;
-        if (time_elapsed < 2500.0f) return;
+        if (time_elapsed < 1000.0f) return;
         time_since_last_particle += dt;
-        if (time_since_last_particle > 0.05f && collision_grid.particles.size() < 1500) {
+        if (time_since_last_particle > 0.04f && collision_grid.particles.size() < 1500) {
+            float rx = 1.0f;//getRandomBetween(1.0f, container_size.x - 1.0f);
+            float ry = getRandomBetween(container_size.y - 1.0f, container_size.y - 2.0f);
             collision_grid.particles.push_back(Particle(
-                getRandomBetween(0.04f, 0.05f), 
-                getRandomBetween(container_size.y - 0.02f, container_size.y - 0.01f),
-                -20.0f, container_size.y - 0.02f,
+                rx, ry,
+                rx - 2.0f, container_size.y - 2.0f,
                 static_cast<float>(abs(sin(time_elapsed / 50))),
                 static_cast<float>(abs(sin(time_elapsed / 50 + 1.0f))),
                 static_cast<float>(abs(sin(time_elapsed / 50 + 2.0f)))
@@ -42,11 +49,24 @@ class Physics {
         }
 
         const float sub_dt = dt / static_cast<float>(sub_steps);
+
+        size_t particle_count = collision_grid.particles.size();
+        size_t chunk_size = particle_count / thread_pool.workers.size();
+
         for (int i = 0; i < sub_steps; i++) {
-            handleCollisions();
+            // for (size_t j = 0; j < particle_count; j += chunk_size) {
+            //     thread_pool.enqueue([this, j, chunk_size, sub_dt, particle_count]() {
+            //         for (size_t k = j; k < std::min(j + chunk_size, particle_count); k++) {
+            //             handleParticleMotion(k, sub_dt);
+            //         }
+            //     });
+            // }
+            // thread_pool.wait(); //TODO:^^^^
             handleMotion(sub_dt);
-        }
+            handleCollisions();
+        }   
     }
+    
 
     void render() {
         for (auto& obj: collision_grid.particles) {
@@ -59,7 +79,7 @@ class Physics {
     }
 
     void handleMotion(float dt) {
-        const float margin = 1.4e-2f;
+        const float margin = 1.0f;//1.4e-2f;
         for (auto& obj : collision_grid.particles) {
             obj.update(dt);
             obj.acceleration += GRAVITY;
@@ -74,6 +94,25 @@ class Physics {
             } else if (obj.position.y < margin) {
                 obj.position.y = margin;
             }
+        }
+    }
+
+    void handleParticleMotion(int idx, float dt) {
+        const float margin = 1.0f;
+
+        Particle& obj = collision_grid.particles[idx];
+        obj.update(dt);
+        obj.acceleration += GRAVITY;
+
+        if (obj.position.x > container_size.x - margin) {
+                obj.position.x = container_size.x - margin;
+        } else if (obj.position.x < margin) {
+            obj.position.x = margin;
+        }
+        if (obj.position.y > container_size.y - margin) {
+            obj.position.y = container_size.y - margin;
+        } else if (obj.position.y < margin) {
+            obj.position.y = margin;
         }
     }
 
@@ -101,7 +140,7 @@ class Physics {
                             for (size_t idx1 : indices) {
                                 Particle& p1 = collision_grid.getParticle(idx1);
                                 for (size_t idx2 : indices) {
-                                    if (idx1 > idx2) {
+                                    if (idx1 != idx2) {
                                         Particle& p2 = collision_grid.getParticle(idx2);
                                         handleCollision(p1, p2);
                                     }
@@ -116,17 +155,21 @@ class Physics {
     }
 
     void handleCollision(Particle& obj1, Particle& obj2) {
-        const float r = 7e-3f;
-        const float eps = 7e-5f;
+        const float r = 1.0f;//7e-3f;
+        const float eps = 1e-4f;//7e-7f;
 
         const float dist = obj1.position.getDistance(obj2.position);
         
         if (dist < r && dist > eps){
-            const float delta  = 0.5f * (r - dist);
+            const float delta = 0.5f * (r - dist);
             
             const Vector2 disp = ((obj1.position - obj2.position) / dist) * delta;
             obj1.position += disp;
             obj2.position -= disp;
+            // obj1.prev_position += disp;
+            // obj2.prev_position -= disp;
+            obj1.changeSpeed(0.95f); //TODO: change this
+            obj2.changeSpeed(0.95f);
         }
     }
 };
