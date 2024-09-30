@@ -11,7 +11,7 @@
 class ThreadPool {
 private:
     std::queue<std::function<void()>> tasks;
-    std::atomic<size_t> tasks_in_progress;
+    std::atomic<size_t> tasks_in_progress = 0;
 
     std::mutex queue_mutex;
     std::condition_variable condition;
@@ -55,10 +55,9 @@ public:
         }
     }
 
-    void wait() {
-        std::unique_lock<std::mutex> lock(queue_mutex);
-        completion_condition.wait(lock, [this] {
-            return tasks_in_progress == 0 && tasks.empty();
-        });
+    void waitForCompletion() {
+        while (tasks.size() > 0) {
+            std::this_thread::yield();
+        }
     }
 };

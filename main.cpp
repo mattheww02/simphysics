@@ -46,7 +46,7 @@ int main() {
     glMatrixMode(GL_MODELVIEW);  // Switch back to model-view mode
     glLoadIdentity();            // Reset the model-view matrix
 
-    Physics physics = Physics(Vector2(200.0f, 150.0f), 2);
+    Physics physics = Physics(Vector2(200.0f, 150.0f), 6);
 
     float dt = 0.0f;
     float prev_frame = 0.0f;

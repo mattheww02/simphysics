@@ -11,6 +11,7 @@
 #include "Particle.h"
 #include "Collisions.h"
 #include "ThreadPool.h"
+#include <mutex>
 
 class Physics {
     const Vector2 GRAVITY = Vector2(0.0f, -20.0f);//Vector2(0.0f, -9.81f);
@@ -21,6 +22,8 @@ class Physics {
 
     CollisionGrid collision_grid = CollisionGrid(64, 32);
     ThreadPool thread_pool;
+
+    std::mutex mutex;
 
  public: 
 
@@ -35,12 +38,22 @@ class Physics {
         time_elapsed += dt;
         if (time_elapsed < 1000.0f) return;
         time_since_last_particle += dt;
-        if (time_since_last_particle > 0.04f && collision_grid.particles.size() < 1500) {
+        if (time_since_last_particle > 0.04f && collision_grid.particles.size() < 2500) {
             float rx = 1.0f;//getRandomBetween(1.0f, container_size.x - 1.0f);
             float ry = getRandomBetween(container_size.y - 1.0f, container_size.y - 2.0f);
             collision_grid.particles.push_back(Particle(
                 rx, ry,
-                rx - 2.0f, container_size.y - 2.0f,
+                rx - 1.0f, container_size.y - 2.5f,
+                static_cast<float>(abs(sin(time_elapsed / 50))),
+                static_cast<float>(abs(sin(time_elapsed / 50 + 1.0f))),
+                static_cast<float>(abs(sin
+                (time_elapsed / 50 + 2.0f)))
+            ));
+            rx = container_size.x - rx;
+            ry = getRandomBetween(container_size.y - 1.0f, container_size.y - 2.0f);
+            collision_grid.particles.push_back(Particle(
+                rx, ry,
+                rx + 1.0f, container_size.y - 2.5f,
                 static_cast<float>(abs(sin(time_elapsed / 50))),
                 static_cast<float>(abs(sin(time_elapsed / 50 + 1.0f))),
                 static_cast<float>(abs(sin(time_elapsed / 50 + 2.0f)))
@@ -51,19 +64,40 @@ class Physics {
         const float sub_dt = dt / static_cast<float>(sub_steps);
 
         size_t particle_count = collision_grid.particles.size();
-        size_t chunk_size = particle_count / thread_pool.workers.size();
+        size_t chunk_size = std::max(particle_count / thread_pool.workers.size(), size_t(1)); //TODO: investigate
+
+        size_t grid_col_count = collision_grid.width;
+        size_t grid_row_count = collision_grid.height;
+        size_t grid_chunk_size = std::max(size_t(grid_col_count / thread_pool.workers.size()), size_t(2));
 
         for (int i = 0; i < sub_steps; i++) {
-            // for (size_t j = 0; j < particle_count; j += chunk_size) {
-            //     thread_pool.enqueue([this, j, chunk_size, sub_dt, particle_count]() {
-            //         for (size_t k = j; k < std::min(j + chunk_size, particle_count); k++) {
-            //             handleParticleMotion(k, sub_dt);
-            //         }
-            //     });
-            // }
-            // thread_pool.wait(); //TODO:^^^^
-            handleMotion(sub_dt);
-            handleCollisions();
+            for (size_t j = 0; j < particle_count; j += chunk_size) {
+                thread_pool.enqueue([this, j, chunk_size, sub_dt, particle_count]() {
+                    for (size_t k = j; k < std::min(j + chunk_size, particle_count); k++) {
+                        handleParticleMotion(k, sub_dt);
+                    }
+                });
+            }
+            thread_pool.waitForCompletion();
+
+            collision_grid.clear();
+            for (int j = 0; j < collision_grid.particles.size(); j++) {
+                const int x = static_cast<int>(floor(collision_grid.particles[j].position.x * collision_grid.width / container_size.x));
+                const int y = static_cast<int>(floor(collision_grid.particles[j].position.y * collision_grid.height / container_size.y));
+                collision_grid.addParticle(j, x, y);
+            }   
+            for (size_t j = 0; j < grid_col_count; j += grid_chunk_size) {
+                thread_pool.enqueue([this, j, grid_chunk_size, grid_col_count, grid_row_count]() {
+                    for (size_t k = j; k < std::min(k + grid_chunk_size, grid_col_count); k++) {
+                        for (size_t r = 0; r < grid_row_count; r++) {
+                            handleParticleCollision(k, r);
+                        }
+                    }
+                });
+            }
+            thread_pool.waitForCompletion();
+            //handleCollisions();
+            //handleMotion(sub_dt);
         }   
     }
     
@@ -113,6 +147,32 @@ class Physics {
             obj.position.y = container_size.y - margin;
         } else if (obj.position.y < margin) {
             obj.position.y = margin;
+        }
+    }
+
+    void handleParticleCollision(int x, int y) {
+        for (int dy = -1; dy <= 1; dy++) { //TODO: make deterministic
+            for (int dx = -1; dx <= 1; dx++) {
+                int neighbor_x = x + dx;
+                int neighbor_y = y + dy;
+
+                // Ensure we stay within grid bounds
+                if (neighbor_x >= 0 && neighbor_x < collision_grid.width &&
+                    neighbor_y >= 0 && neighbor_y < collision_grid.height) {
+                    
+                    std::vector<size_t> indices = collision_grid.getParticleIndices(neighbor_x, neighbor_y);
+                    
+                    for (size_t idx1 : indices) {
+                        Particle& p1 = collision_grid.getParticle(idx1);
+                        for (size_t idx2 : indices) {
+                            if (idx1 != idx2) {
+                                Particle& p2 = collision_grid.getParticle(idx2);
+                                handleCollision(p1, p2);
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -166,10 +226,13 @@ class Physics {
             const Vector2 disp = ((obj1.position - obj2.position) / dist) * delta;
             obj1.position += disp;
             obj2.position -= disp;
-            // obj1.prev_position += disp;
-            // obj2.prev_position -= disp;
-            obj1.changeSpeed(0.95f); //TODO: change this
-            obj2.changeSpeed(0.95f);
+            obj1.prev_position += disp;// * 0.9; //TODO: think of a better solution
+            obj2.prev_position -= disp;// * 0.9;
+            obj1.changeSpeed(0.98f); //TODO: change this
+            obj2.changeSpeed(0.98f);
+            //TODO: if colliding horizontally, reduce horizontal speed only
+            //TODO: and likewise for vertical collisions
+            //TODO: -> so we can have friction without breaking gravity
         }
     }
 };
